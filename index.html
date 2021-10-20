@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Double Pendulum</title>
+    <meta name="title" content="Double Pendulum" />
+    <meta
+      name="description"
+      content="Interactive Double Pendulum Playground Using SVG"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://theabbie.github.io/DoublePendulum/" />
+    <meta property="og:title" content="Double Pendulum" />
+    <meta
+      property="og:description"
+      content="Interactive Double Pendulum Playground Using SVG"
+    />
+    <meta
+      property="og:image"
+      content="https://theabbie.github.io/DoublePendulum/DoublePendulum.jpg"
+    />
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://theabbie.github.io/DoublePendulum/" />
+    <meta property="twitter:title" content="Double Pendulum" />
+    <meta
+      property="twitter:description"
+      content="Interactive Double Pendulum Playground Using SVG"
+    />
+    <meta
+      property="twitter:image"
+      content="https://theabbie.github.io/DoublePendulum/DoublePendulum.jpg"
+    />
+    <style>
+      * {
+        user-select: none;
+      }
+      body {
+        margin: 0;
+        background-color: #121212;
+        overflow: hidden;
+      }
+      svg {
+        width: 100%;
+        height: 100%;
+        background-color: transparent;
+        touch-action: none;
+      }
+      line {
+        stroke: white;
+        stroke-width: 0.5;
+        stroke-linecap: round;
+        transition: 0s all;
+      }
+      circle {
+        fill: white;
+        stroke: 0;
+        cursor: pointer;
+      }
+      polyline {
+        stroke: white;
+        stroke-width: 0.3;
+        stroke-linecap: round;
+        fill: none;
+      }
+      #upper_graph {
+        stroke: #212121;
+      }
+      input[type="checkbox"] {
+        margin-right: 10px;
+        transform: scale(1.5, 1.5);
+      }
+      .menu {
+        position: fixed;
+        display: flex;
+        flex-direction: column;
+        font-size: 12pt;
+        align-items: center;
+        font-weight: bolder;
+        font-family: "Courier New", Courier, monospace;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #909090;
+        cursor: pointer;
+        transition: 0.5s all;
+      }
+      .menu span,
+      a,
+      button {
+        text-decoration: none;
+        border: none;
+        background-color: transparent;
+        margin-bottom: 5px;
+        transition: 0.1s all;
+        cursor: pointer;
+        color: inherit;
+      }
+      .menu span:hover,
+      .menu a:hover,
+      .menu button:hover {
+        color: white;
+      }
+      #pause {
+        font-weight: bolder;
+        font-size: 5pt;
+        transform: scale(5, 5);
+        margin-left: 10px;
+        margin-right: 10px;
+        white-space: nowrap;
+      }
+      @media only screen and (min-width: 768px) {
+        .menu {
+          flex-direction: row;
+          width: 100%;
+          justify-content: space-around;
+        }
+        .menu span,
+        a,
+        button {
+          font-size: 20pt;
+          margin-left: 10px;
+          margin-right: 10px;
+        }
+        #toggle {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="container">
+      <polyline id="upper_graph" />
+      <circle id="base" />
+      <line id="upper_string" />
+      <circle id="upper_bob" />
+      <line id="lower_string" />
+      <circle id="lower_bob" />
+      <polyline id="tracer" />
+    </svg>
+    <div class="menu">
+      <a href="/" id="home">⌂</a>
+      <a href="https://github.com/theabbie/DoublePendulum" id="github"
+        >GITHUB</a
+      >
+      <button id="pause">| |</button>
+      <span id="reset" onclick="refresh()">RESET</span>
+      <span id="reset">
+        <input
+          type="checkbox"
+          onchange="tracer.setActive(this.checked)"
+          checked
+        />SHOW TRACE?
+      </span>
+      <span id="persist">
+        <input
+          type="checkbox"
+          onchange="tracer.setMAX(this.checked ? 10000 : 500)"
+        />PERSIST TRACE?
+      </span>
+      <span id="graph">
+        <input
+          type="checkbox"
+          onchange="upperGraph.setActive(this.checked)"
+          checked
+        />SHOW GRAPH?
+      </span>
+      <span id="gravity">
+        <input
+          type="checkbox"
+          onchange="doublePendulum.setGravity(this.checked ? 0.1 : 0)"
+          checked
+        />GRAVITY?
+      </span>
+      <span id="mass"
+        ><span onclick="doublePendulum.decreaseLowerMass()">-</span> MASS
+        <span onclick="doublePendulum.increaseLowerMass()">+</span></span
+      >
+      <span
+        id="toggle"
+        onclick="menu.style.transform=(menu.style.transform == 'translate(-50%, -95%)' ? 'translate(-50%, 0%)' : 'translate(-50%, -95%)')"
+        >☰</span
+      >
+    </div>
+  </body>
+  <script>
+    var menu = document.querySelector(".menu");
+    var animationToggleButton = document.querySelector("#pause");
+    var canvas = document.querySelector("#container");
+    var upperGraphLine = document.querySelector("#upper_graph");
+    var base = document.querySelector("#base");
+    var upperString = document.querySelector("#upper_string");
+    var lowerString = document.querySelector("#lower_string");
+    var upperBob = document.querySelector("#upper_bob");
+    var lowerBob = document.querySelector("#lower_bob");
+    var tracerLine = document.querySelector("#tracer");
+    var animation;
+
+    class DoublePendulum {
+      constructor({
+        width,
+        height,
+        ang0,
+        ang1,
+        v0,
+        v1,
+        acc0,
+        acc1,
+        baseRad,
+        l0,
+        l1,
+        r0,
+        r1,
+        m0,
+        m1,
+        g,
+      }) {
+        this.width = width;
+        this.height = height;
+        this.x0 = this.width / 2;
+        this.y0 = this.height / 2;
+        this.ang0 = ang0;
+        this.ang1 = ang1;
+        this.v0 = v0;
+        this.v1 = v1;
+        this.acc0 = acc0;
+        this.acc1 = acc1;
+        this.baseRad = baseRad;
+        this.l0 = l0;
+        this.l1 = l1;
+        this.r0 = r0;
+        this.r1 = r1;
+        this.m0 = m0;
+        this.m1 = m1;
+        this.g = g;
+        this.upperBobHold = false;
+        this.lowerBobHold = false;
+        this.baseHold = false;
+      }
+
+      setWidth(w) {
+        this.width = w;
+      }
+
+      setHeight(h) {
+        this.height = h;
+      }
+
+      setUpperAngle(ang) {
+        this.ang0 = ang;
+      }
+
+      setLowerAngle(ang) {
+        this.ang1 = ang;
+      }
+
+      setUpperVelocity(vel) {
+        this.v0 = vel;
+      }
+
+      setLowerVelocity(vel) {
+        this.v1 = vel;
+      }
+
+      setUpperAcceleration(acc) {
+        this.acc0 = acc;
+      }
+
+      setLowerAcceleration(acc) {
+        this.acc1 = acc;
+      }
+
+      increaseUpperMass() {
+        this.m0 += 1;
+      }
+
+      decreaseUpperMass() {
+        this.m0 -= 1;
+      }
+
+      increaseLowerMass() {
+        this.m1 += 1;
+      }
+
+      decreaseLowerMass() {
+        this.m1 -= 1;
+      }
+
+      setGravity(gravity) {
+        this.g = gravity;
+      }
+
+      setBasePos(x, y) {
+        const upperBob = this.getUpperBob();
+        const [distX, distY] = [upperBob.x - x, upperBob.y - y];
+        this.x0 = x;
+        this.y0 = y;
+        this.l0 = Math.sqrt(distX ** 2 + distY ** 2);
+        const tempAng = Math.atan(distX / distY);
+        if (distX < 0) {
+          if (distY > 0) this.ang0 = tempAng;
+          if (distY < 0) this.ang0 = tempAng - Math.PI;
+        }
+        if (distX > 0) {
+          if (distY > 0) this.ang0 = tempAng;
+          if (distY < 0) this.ang0 = Math.PI + tempAng;
+        }
+      }
+
+      setUpperBobPos(x, y) {
+        const [distX, distY] = [x - this.x0, y - this.y0];
+        this.l0 = Math.sqrt(distX ** 2 + distY ** 2);
+        const tempAng = Math.atan(distX / distY);
+        if (distX < 0) {
+          if (distY > 0) this.ang0 = tempAng;
+          if (distY < 0) this.ang0 = tempAng - Math.PI;
+        }
+        if (distX > 0) {
+          if (distY > 0) this.ang0 = tempAng;
+          if (distY < 0) this.ang0 = Math.PI + tempAng;
+        }
+      }
+
+      setLowerBobPos(x, y) {
+        const upperBobPos = this.getUpperBob();
+        const [distX, distY] = [x - upperBobPos.x, y - upperBobPos.y];
+        this.l1 = Math.sqrt(distX ** 2 + distY ** 2);
+        const tempAng = Math.atan(distX / distY);
+        if (distX < 0) {
+          if (distY > 0) this.ang1 = -tempAng;
+          if (distY < 0) this.ang1 = Math.PI - tempAng;
+        }
+        if (distX > 0) {
+          if (distY > 0) this.ang1 = -tempAng;
+          if (distY < 0) this.ang1 = -Math.PI - tempAng;
+        }
+      }
+
+      holdBase() {
+        this.baseHold = true;
+      }
+
+      holdUpperBob() {
+        this.upperBobHold = true;
+      }
+
+      holdLowerBob() {
+        this.lowerBobHold = true;
+      }
+
+      dropBase() {
+        this.baseHold = false;
+      }
+
+      dropUpperBob() {
+        this.upperBobHold = false;
+      }
+
+      dropLowerBob() {
+        this.lowerBobHold = false;
+      }
+
+      calculateBobPosition(x0, y0, angle, len) {
+        const offsetX = len * Math.sin(angle);
+        const offsetY = len * Math.cos(angle);
+        const x = x0 + offsetX;
+        const y = y0 + offsetY;
+        return { x, y };
+      }
+
+      getUpperBob() {
+        const { x0, y0, ang0, l0 } = this;
+        const { x, y } = this.calculateBobPosition(x0, y0, ang0, l0);
+        return { x, y };
+      }
+
+      getLowerBob() {
+        const upperBobPos = this.getUpperBob();
+        const { ang1, l1 } = this;
+        const { x, y } = this.calculateBobPosition(
+          upperBobPos.x,
+          upperBobPos.y,
+          -ang1,
+          l1
+        );
+        return { x, y };
+      }
+
+      getAngularVelocities() {
+        const { ang0, ang1, l0, l1, v0, v1, r0, r1, m0, m1, g } = this;
+        const cos0 = Math.cos(ang0);
+        const sin0 = Math.sin(ang0);
+        const cosDiff = Math.cos(ang0 - ang1);
+        const sinDiff = Math.sin(ang0 - ang1);
+        const cos2Diff = Math.cos(2 * (ang0 - ang1));
+        const sinAng2Diff = Math.sin(ang0 - 2 * ang1);
+        const velAng0 = l0 * v0 * v0;
+        const velAng1 = l1 * v1 * v1;
+        const massSum = m0 + m1;
+        const doubleMass1Sum = 2 * m0 + m1;
+        const baseVal = doubleMass1Sum - m1 * cos2Diff;
+        const ang0Val = velAng1 + velAng0 * cosDiff;
+        const ang0UpperVal =
+          -g * doubleMass1Sum * sin0 -
+          m1 * g * sinAng2Diff -
+          2 * sinDiff * m1 * ang0Val;
+        const acc0 = ang0UpperVal / (l0 * baseVal);
+        const ang1Val = (velAng0 + g * cos0) * massSum + velAng1 * m1 * cosDiff;
+        const ang1UpperVal = 2 * sinDiff * ang1Val;
+        const acc1 = ang1UpperVal / (l1 * baseVal);
+        this.setUpperAcceleration(acc0);
+        this.setLowerAcceleration(acc1);
+        return { acc0, acc1 };
+      }
+    }
+
+    class Tracer {
+      constructor() {
+        this.points = [];
+        this.MAX = 500;
+        this.isActive = true;
+        this.ctr = 0;
+      }
+
+      addPoint({ x, y }) {
+        if (this.isActive)
+          this.points = [...this.points.slice(-this.MAX), { x, y }];
+        else this.points = [];
+      }
+
+      addGraphPoint(data) {
+        if (this.isActive)
+          this.points = [...this.points, { x: this.ctr++, y: data }];
+        else this.points = [];
+      }
+
+      clearPoints() {
+        this.points = [];
+      }
+
+      getPointsAsString() {
+        return this.points.map(({ x, y }) => `${x},${y}`).join(" ");
+      }
+
+      setActive(active) {
+        this.isActive = active;
+      }
+
+      setMAX(n) {
+        this.MAX = n;
+      }
+    }
+
+    var doublePendulum;
+
+    const tracer = new Tracer();
+
+    const upperGraph = new Tracer();
+
+    function refresh() {
+      const scaleWidth = 100;
+      const scaleHeight = (100 * innerHeight) / innerWidth;
+      const scale = Math.min(scaleWidth, scaleHeight);
+
+      doublePendulum = new DoublePendulum({
+        width: scaleWidth,
+        height: scaleHeight,
+        ang0: 0,
+        ang1: 0,
+        v0: 0,
+        v1: 0,
+        acc0: 0,
+        acc1: 0,
+        baseRad: scale / 70,
+        l0: scale / 4.5,
+        l1: scale / 4.5,
+        r0: scale / 30,
+        r1: scale / 30,
+        m0: 100,
+        m1: 100,
+        g: 0.1,
+      });
+      canvas.setAttribute(
+        "viewBox",
+        `0 0 ${doublePendulum.width} ${doublePendulum.height}`
+      );
+      tracer.clearPoints();
+      upperGraph.clearPoints();
+    }
+
+    refresh();
+
+    function drawPendulum() {
+      const { x0, y0, ang0, ang1, l0, l1, baseRad, r0, r1, m0, m1, g } =
+        doublePendulum;
+
+      const upperBobPos = doublePendulum.getUpperBob();
+      const lowerBobPos = doublePendulum.getLowerBob();
+
+      base.setAttribute("r", baseRad);
+      base.setAttribute("cx", x0);
+      base.setAttribute("cy", y0);
+
+      upperString.setAttribute("x1", x0);
+      upperString.setAttribute("y1", y0);
+
+      upperString.setAttribute("x2", upperBobPos.x);
+      upperString.setAttribute("y2", upperBobPos.y);
+
+      upperBob.setAttribute("r", r0);
+      upperBob.setAttribute("cx", upperBobPos.x);
+      upperBob.setAttribute("cy", upperBobPos.y);
+
+      lowerString.setAttribute("x1", upperBobPos.x);
+      lowerString.setAttribute("y1", upperBobPos.y);
+
+      lowerString.setAttribute("x2", lowerBobPos.x);
+      lowerString.setAttribute("y2", lowerBobPos.y);
+
+      lowerBob.setAttribute("r", r1);
+      lowerBob.setAttribute("cx", lowerBobPos.x);
+      lowerBob.setAttribute("cy", lowerBobPos.y);
+
+      var tempAng = Math.abs(ang0) + Math.abs(ang1);
+      var tempPlot = Math.min(tempAng, 2 * Math.PI - tempAng);
+
+      upperGraph.addGraphPoint(
+        doublePendulum.height * 0.5 +
+          (doublePendulum.height *
+            0.125 *
+            Math.min(tempPlot, 2 * Math.PI - tempPlot)) /
+            Math.PI
+      );
+      drawGraph();
+    }
+
+    function drawTracer() {
+      tracerLine.setAttribute("points", tracer.getPointsAsString());
+    }
+
+    function drawGraph() {
+      upperGraphLine.style.transform = `translateX(-${
+        upperGraphLine.getBBox().width - 100
+      }px)`;
+      upperGraphLine.setAttribute("points", upperGraph.getPointsAsString());
+    }
+
+    function animate() {
+      doublePendulum.getAngularVelocities();
+      const { ang0, ang1, v0, v1, acc0, acc1 } = doublePendulum;
+
+      doublePendulum.setUpperVelocity(v0 + acc0);
+      doublePendulum.setLowerVelocity(v1 + acc1);
+      doublePendulum.setUpperAngle(ang0 + v0 + acc0);
+      doublePendulum.setLowerAngle(ang1 + v1 + acc1);
+      drawPendulum();
+
+      tracer.addPoint(doublePendulum.getLowerBob());
+      drawTracer();
+    }
+
+    animation = setInterval(animate, 10);
+
+    function animationToggle(e) {
+      if (!animation) {
+        animation = setInterval(animate, 10);
+        animationToggleButton.innerHTML = "| |";
+      } else {
+        clearInterval(animation);
+        animation = null;
+        animationToggleButton.innerHTML = ">";
+      }
+    }
+
+    function handleHold(clickX, clickY) {
+      const { x0, y0, baseRad, r0, r1 } = doublePendulum;
+      const upperBob = doublePendulum.getUpperBob();
+      const lowerBob = doublePendulum.getLowerBob();
+      if ((clickX - x0) ** 2 + (clickY - y0) ** 2 < 2.25 * baseRad ** 2) {
+        tracer.clearPoints();
+        doublePendulum.holdBase();
+      }
+      if (
+        (clickX - upperBob.x) ** 2 + (clickY - upperBob.y) ** 2 <
+        2.25 * r0 ** 2
+      ) {
+        clearInterval(animation);
+        animation = null;
+        tracer.clearPoints();
+        doublePendulum.holdUpperBob();
+      }
+      if (
+        (clickX - lowerBob.x) ** 2 + (clickY - lowerBob.y) ** 2 <
+        2.25 * r1 ** 2
+      ) {
+        clearInterval(animation);
+        animation = null;
+        tracer.clearPoints();
+        doublePendulum.holdLowerBob();
+      }
+    }
+
+    function handleMove(clickX, clickY) {
+      if (doublePendulum.baseHold) {
+        doublePendulum.setBasePos(clickX, clickY);
+        drawPendulum();
+      }
+      if (doublePendulum.upperBobHold) {
+        doublePendulum.setUpperBobPos(clickX, clickY);
+        drawPendulum();
+      }
+      if (doublePendulum.lowerBobHold) {
+        doublePendulum.setLowerBobPos(clickX, clickY);
+        drawPendulum();
+      }
+    }
+
+    function handleDrop() {
+      if (!animation) animation = setInterval(animate, 10);
+      doublePendulum.dropUpperBob();
+      doublePendulum.dropLowerBob();
+      doublePendulum.dropBase();
+    }
+
+    window.addEventListener("mousedown", (e) => {
+      const clickX = (e.x * doublePendulum.width) / canvas.clientWidth;
+      const clickY = (e.y * doublePendulum.height) / canvas.clientHeight;
+      handleHold(clickX, clickY);
+    });
+
+    window.addEventListener("touchstart", (e) => {
+      const clickX =
+        (e.touches[0].clientX * doublePendulum.width) / canvas.clientWidth;
+      const clickY =
+        (e.touches[0].clientY * doublePendulum.height) / canvas.clientHeight;
+      handleHold(clickX, clickY);
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      const clickX = (e.x * doublePendulum.width) / canvas.clientWidth;
+      const clickY = (e.y * doublePendulum.height) / canvas.clientHeight;
+      handleMove(clickX, clickY);
+    });
+
+    window.addEventListener("touchmove", (e) => {
+      const clickX =
+        (e.touches[0].clientX * doublePendulum.width) / canvas.clientWidth;
+      const clickY =
+        (e.touches[0].clientY * doublePendulum.height) / canvas.clientHeight;
+      handleMove(clickX, clickY);
+    });
+
+    window.addEventListener("mouseup", handleDrop);
+    window.addEventListener("touchend", handleDrop);
+
+    animationToggleButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      animationToggle();
+    });
+
+    animationToggleButton.addEventListener("mouseup", (e) => {
+      e.stopPropagation();
+    });
+
+    animationToggleButton.addEventListener("touchend", (e) => {
+      e.stopPropagation();
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.keyCode == 32 || e.key == " ") animationToggle();
+    });
+  </script>
+</html>
