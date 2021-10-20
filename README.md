@@ -1,8 +1,8 @@
-# DoublePendulum
+# Double Pendulum Playground
 
 ![Double Pendulum](https://user-images.githubusercontent.com/17960677/138047613-f9b5dbc2-9b0a-4f6f-8ae7-9b01784431a7.png)
 
-> Double Pendulum Playground
+> Interactive Double Pendulum Playground Using SVG
 
  a double pendulum is a pendulum with another pendulum attached to its end, is a simple physical system that exhibits rich dynamic behavior with a strong sensitivity to initial conditions.
  
