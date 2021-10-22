@@ -182,19 +182,18 @@
           checked
         />GRAVITY?
       </span>
-      <span id="mass"
-        ><span onclick="doublePendulum.decreaseLowerMass()">-</span> MASS
-        <span onclick="doublePendulum.increaseLowerMass()">+</span></span
-      >
-      <span
-        id="toggle"
-        onclick="menu.style.transform=(menu.style.transform == 'translate(-50%, -95%)' ? 'translate(-50%, 0%)' : 'translate(-50%, -95%)')"
-        >☰</span
-      >
+      <span id="mass">
+        <span onclick="doublePendulum.decreaseLowerMass()">-</span>
+        <span>MASS</span>
+        <span onclick="doublePendulum.increaseLowerMass()">+</span>
+      </span>
+      <span id="share" onclick="shareConfig()">SHARE</span>
+      <span id="toggle" onclick="toggleMenu()"> ☰ </span>
     </div>
   </body>
   <script>
     var menu = document.querySelector(".menu");
+    var shareButton = document.querySelector("#share");
     var animationToggleButton = document.querySelector("#pause");
     var canvas = document.querySelector("#container");
     var upperGraphLine = document.querySelector("#upper_graph");
@@ -463,9 +462,7 @@
         const k3 = this.hamiltonian(
           ...curr.map((_c, _i) => _c + 0.5 * dt * k2[_i])
         );
-        const k4 = this.hamiltonian(
-          ...curr.map((_c, _i) => _c + dt * k3[_i])
-        );
+        const k4 = this.hamiltonian(...curr.map((_c, _i) => _c + dt * k3[_i]));
         const R = [0, 0, 0, 0].map(
           (_c, _i) => (dt * (k1[_i] + 2 * k2[_i] + 2 * k3[_i] + k4[_i])) / 6
         );
@@ -542,6 +539,20 @@
         m1: 100,
         g: 0.1,
       });
+
+      if (window.location.hash.length > 0) {
+        const query = window.location.hash.substring(1);
+        try {
+          const encoded_JSON = atob(query);
+          const config = JSON.parse(encoded_JSON);
+          for (var prop in config) {
+            doublePendulum[prop] = config[prop];
+          }
+        } catch (e) {
+          window.location.hash = "";
+        }
+      }
+
       canvas.setAttribute(
         "viewBox",
         `0 0 ${doublePendulum.width} ${doublePendulum.height}`
@@ -626,6 +637,20 @@
         animation = null;
         animationToggleButton.innerHTML = ">";
       }
+    }
+
+    function toggleMenu() {
+      if (menu.style.transform == "translate(-50%, -95%)") {
+        menu.style.transform = "translate(-50%, 0%)";
+      } else {
+        menu.style.transform = "translate(-50%, -95%)";
+      }
+    }
+
+    function shareConfig() {
+      window.location.hash = btoa(JSON.stringify(doublePendulum));
+      shareButton.innerHTML = "👆 COPY LINK !!!";
+      setTimeout(() => (shareButton.innerHTML = "SHARE"), 1500);
     }
 
     function handleHold(clickX, clickY) {
