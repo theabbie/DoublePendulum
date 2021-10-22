@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+cd <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -246,6 +246,7 @@
         this.upperBobHold = false;
         this.lowerBobHold = false;
         this.baseHold = false;
+        this.setMoments();
       }
 
       setWidth(w) {
@@ -298,6 +299,13 @@
 
       setGravity(gravity) {
         this.g = gravity;
+      }
+
+      setMoments() {
+        const { m0, m1, ang0, ang1, l0, l1, v0, v1 } = this;
+        const commonVal = m1 * l0 * l1 * Math.cos(ang0 - ang1);
+        this.moment0 = (m0 + m1) * l0 ** 2 * v0 + v1 * commonVal;
+        this.moment1 = m1 * l1 ** 2 * v1 + v0 * commonVal;
       }
 
       setBasePos(x, y) {
@@ -421,6 +429,50 @@
         this.setUpperAcceleration(acc0);
         this.setLowerAcceleration(acc1);
         return { acc0, acc1 };
+      }
+
+      hamiltonian(ang0, ang1, moment0, moment1) {
+        const { m0, m1, l0, l1, g } = this;
+        const C0 = l0 * l1 * (m0 + m1 * Math.sin(ang0 - ang1) ** 2);
+        const C1 = (moment0 * moment1 * Math.sin(ang0 - ang1)) / C0;
+        const C2 =
+          ((m1 * (l1 * moment0) ** 2 +
+            (m0 + m1) * (l0 * moment1) ** 2 -
+            2 * l0 * l1 * m1 * moment0 * moment1 * Math.cos(ang0 - ang1)) *
+            Math.sin(2 * (ang0 - ang1))) /
+          (2 * C0 ** 2);
+        const F_ang0 =
+          (l1 * moment0 - l0 * moment1 * Math.cos(ang0 - ang1)) / (l0 * C0);
+        const F_ang1 =
+          (l0 * (m0 + m1) * moment1 -
+            l1 * m1 * moment0 * Math.cos(ang0 - ang1)) /
+          (l1 * m1 * C0);
+        const F_moment0 = -(m0 + m1) * g * l0 * Math.sin(ang0) - C1 + C2;
+        const F_moment1 = -m1 * g * l1 * Math.sin(ang1) + C1 - C2;
+        return [F_ang0, F_ang1, F_moment0, F_moment1];
+      }
+
+      move() {
+        const { ang0, ang1, moment0, moment1 } = this;
+        const curr = [ang0, ang1, moment0, moment1];
+        const dt = 1;
+        const k1 = this.hamiltonian(...curr);
+        const k2 = this.hamiltonian(
+          ...curr.map((_c, _i) => _c + 0.5 * dt * k1[_i])
+        );
+        const k3 = this.hamiltonian(
+          ...curr.map((_c, _i) => _c + 0.5 * dt * k2[_i])
+        );
+        const k4 = this.hamiltonian(
+          ...curr.map((_c, _i) => _c + dt * k3[_i])
+        );
+        const R = [0, 0, 0, 0].map(
+          (_c, _i) => (dt * (k1[_i] + 2 * k2[_i] + 2 * k3[_i] + k4[_i])) / 6
+        );
+        this.ang0 += R[0];
+        this.ang1 += R[1];
+        this.moment0 += R[2];
+        this.moment1 += R[3];
       }
     }
 
@@ -556,13 +608,7 @@
     }
 
     function animate() {
-      doublePendulum.getAngularVelocities();
-      const { ang0, ang1, v0, v1, acc0, acc1 } = doublePendulum;
-
-      doublePendulum.setUpperVelocity(v0 + acc0);
-      doublePendulum.setLowerVelocity(v1 + acc1);
-      doublePendulum.setUpperAngle(ang0 + v0 + acc0);
-      doublePendulum.setLowerAngle(ang1 + v1 + acc1);
+      doublePendulum.move();
       drawPendulum();
 
       tracer.addPoint(doublePendulum.getLowerBob());
