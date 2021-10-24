@@ -64,10 +64,11 @@
         stroke: 0;
         cursor: pointer;
       }
-      polyline {
+      path {
         stroke: white;
         stroke-width: 0.3;
         stroke-linecap: round;
+        stroke-linejoin: round;
         fill: none;
       }
       #upper_graph {
@@ -120,7 +121,7 @@
         line {
           stroke-width: 0.3;
         }
-        polyline {
+        path {
           stroke-width: 0.1;
         }
         .menu {
@@ -146,13 +147,13 @@
   </head>
   <body>
     <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="container">
-      <polyline id="upper_graph" />
+      <path id="upper_graph" />
       <circle id="base" />
       <line id="upper_string" />
       <circle id="upper_bob" />
       <line id="lower_string" />
       <circle id="lower_bob" />
-      <polyline id="tracer" />
+      <path id="tracer" />
     </svg>
     <div class="menu">
       <a href="/" id="home">⌂</a>
@@ -173,6 +174,12 @@
           type="checkbox"
           onchange="tracer.setMAX(this.checked ? 10000 : 500)"
         />PERSIST TRACE?
+      </span>
+      <span id="smoothen">
+        <input
+          type="checkbox"
+          onchange="tracer.smoothen=this.checked"
+        />SMOOTHEN TRACE?
       </span>
       <span id="graph">
         <input
@@ -335,30 +342,14 @@
       setUpperBobPos(x, y) {
         const [distX, distY] = [x - this.x0, y - this.y0];
         this.l0 = Math.sqrt(distX ** 2 + distY ** 2);
-        const tempAng = Math.atan(distX / distY);
-        if (distX < 0) {
-          if (distY > 0) this.ang0 = tempAng;
-          if (distY < 0) this.ang0 = tempAng - Math.PI;
-        }
-        if (distX > 0) {
-          if (distY > 0) this.ang0 = tempAng;
-          if (distY < 0) this.ang0 = Math.PI + tempAng;
-        }
+        this.ang0 = Math.atan2(distX, distY);
       }
 
       setLowerBobPos(x, y) {
         const upperBobPos = this.getUpperBob();
         const [distX, distY] = [x - upperBobPos.x, y - upperBobPos.y];
         this.l1 = Math.sqrt(distX ** 2 + distY ** 2);
-        const tempAng = Math.atan(distX / distY);
-        if (distX < 0) {
-          if (distY > 0) this.ang1 = -tempAng;
-          if (distY < 0) this.ang1 = Math.PI - tempAng;
-        }
-        if (distX > 0) {
-          if (distY > 0) this.ang1 = -tempAng;
-          if (distY < 0) this.ang1 = -Math.PI - tempAng;
-        }
+        this.ang1 = -Math.atan2(distX, distY);
       }
 
       holdBase() {
@@ -478,6 +469,8 @@
         this.ang1 += R[1];
         this.moment0 += R[2];
         this.moment1 += R[3];
+        this.ang0 = ((3 * Math.PI + this.ang0) % (2 * Math.PI)) - Math.PI;
+        this.ang1 = ((3 * Math.PI + this.ang1) % (2 * Math.PI)) - Math.PI;
       }
     }
 
@@ -487,6 +480,8 @@
         this.MAX = 500;
         this.isActive = true;
         this.ctr = 0;
+        this.smooth = 0.2;
+        this.smoothen = false;
       }
 
       addPoint({ x, y }) {
@@ -505,8 +500,57 @@
         this.points = [];
       }
 
+      getLine(p1, p2) {
+        const distX = p2.x - p1.x;
+        const distY = p2.y - p1.y;
+        const len = Math.sqrt(distX ** 2 + distY ** 2);
+        const ang = Math.atan2(distY, distX);
+        return { len, ang };
+      }
+
+      getControlPoint(current, previous, next, reverse) {
+        previous = previous || current;
+        next = next || current;
+        var { len, ang } = this.getLine(previous, next);
+        ang = ang + (reverse ? Math.PI : 0);
+        len = len * this.smooth;
+        const x = current.x + len * Math.cos(ang);
+        const y = current.y + len * Math.sin(ang);
+        return { x, y };
+      }
+
+      getSmoothPoint(point, i, points) {
+        const prevSmooth = this.getControlPoint(
+          points[i - 1],
+          points[i - 2],
+          point
+        );
+        const nextSmooth = this.getControlPoint(
+          point,
+          points[i - 1],
+          points[i + 1]
+        );
+        return `C${prevSmooth.x} ${prevSmooth.y} ${nextSmooth.x} ${nextSmooth.y} ${point.x} ${point.y}`;
+      }
+
       getPointsAsString() {
-        return this.points.map(({ x, y }) => `${x},${y}`).join(" ");
+        if (this.smoothen) {
+          return this.points
+          .map(
+            ({ x, y }, i) =>
+              `${i == 0 ? `M${x} ${y}` : this.getSmoothPoint({ x, y }, i, this.points)}`
+          )
+          .join(" ");
+        }
+        else {
+          const len = this.points.length;
+          return this.points
+          .map(
+            ({ x, y }, i) =>
+              `${i == 0 ? "M" : "L"}${x} ${y}`
+          )
+          .join(" ");
+        }
       }
 
       setActive(active) {
@@ -608,28 +652,25 @@
       lowerBob.setAttribute("cx", lowerBobPos.x);
       lowerBob.setAttribute("cy", lowerBobPos.y);
 
-      var tempAng = Math.abs(ang0) + Math.abs(ang1);
+      var tempAng = ang0 + ang1;
       var tempPlot = Math.min(tempAng, 2 * Math.PI - tempAng);
 
       upperGraph.addGraphPoint(
         doublePendulum.height * 0.5 +
-          (doublePendulum.height *
-            0.125 *
-            Math.min(tempPlot, 2 * Math.PI - tempPlot)) /
-            Math.PI
+          (doublePendulum.height * 0.125 * tempPlot) / Math.PI
       );
       drawGraph();
     }
 
     function drawTracer() {
-      tracerLine.setAttribute("points", tracer.getPointsAsString());
+      tracerLine.setAttribute("d", tracer.getPointsAsString());
     }
 
     function drawGraph() {
       upperGraphLine.style.transform = `translateX(-${
         upperGraphLine.getBBox().width - 100
       }px)`;
-      upperGraphLine.setAttribute("points", upperGraph.getPointsAsString());
+      upperGraphLine.setAttribute("d", upperGraph.getPointsAsString());
     }
 
     function animate() {
@@ -748,18 +789,13 @@
     window.addEventListener("mouseup", handleDrop);
     window.addEventListener("touchend", handleDrop);
 
-    animationToggleButton.addEventListener("click", (e) => {
-      e.stopPropagation();
-      animationToggle();
+    Array.from(menu.children).forEach((option) => {
+      option.addEventListener("click", (e) => e.stopPropagation());
+      option.addEventListener("mouseup", (e) => e.stopPropagation());
+      option.addEventListener("touchend", (e) => e.stopPropagation());
     });
 
-    animationToggleButton.addEventListener("mouseup", (e) => {
-      e.stopPropagation();
-    });
-
-    animationToggleButton.addEventListener("touchend", (e) => {
-      e.stopPropagation();
-    });
+    animationToggleButton.addEventListener("click", animationToggle);
 
     window.addEventListener("keyup", (e) => {
       if (e.keyCode == 32 || e.key == " ") animationToggle();
