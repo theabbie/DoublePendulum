@@ -90,8 +90,11 @@
         left: 50%;
         transform: translateX(-50%);
         color: #909090;
-        cursor: pointer;
         transition: 0.5s all;
+      }
+      .menu * {
+        cursor: pointer;
+        white-space: nowrap;
       }
       .menu span,
       a,
@@ -101,7 +104,6 @@
         background-color: transparent;
         margin-bottom: 5px;
         transition: 0.1s all;
-        cursor: pointer;
         color: inherit;
       }
       .menu span:hover,
@@ -115,6 +117,22 @@
         transform: scale(2, 2);
         margin-left: 10px;
         margin-right: 10px;
+        white-space: nowrap;
+      }
+      .masses {
+        display: flex;
+        align-items: center;
+        width: 70vw;
+        justify-content: space-between;
+      }
+      .masses .mass {
+        display: flex;
+      }
+      .masses .mass span {
+        font-size: 12pt;
+        white-space: nowrap;
+      }
+      #share {
         white-space: nowrap;
       }
       @media only screen and (min-width: 768px) {
@@ -142,6 +160,13 @@
         #pause {
           transform: scale(5, 5);
         }
+        .masses {
+          width: auto;
+          flex-direction: column;
+        }
+        .masses .mass span {
+          font-size: 14pt;
+        }
       }
     </style>
   </head>
@@ -166,57 +191,70 @@
         <input
           type="checkbox"
           onchange="tracer.setActive(this.checked)"
+          id="resetbox"
           checked
-        />SHOW TRACE?
+        /><label for="resetbox">SHOW TRACE?</label>
       </span>
       <span id="persist">
         <input
           type="checkbox"
           onchange="tracer.setMAX(this.checked ? 10000 : 500)"
-        />PERSIST TRACE?
+          id="persistbox"
+        /><label for="persistbox"> PERSIST TRACE? </label>
       </span>
       <span id="smoothen">
         <input
           type="checkbox"
           onchange="tracer.smoothen=this.checked"
-        />SMOOTHEN TRACE?
+          id="smoothenbox"
+        /><label for="smoothenbox">SMOOTHEN TRACE?</label>
       </span>
       <span id="graph">
         <input
           type="checkbox"
           onchange="upperGraph.setActive(this.checked)"
+          id="graphbox"
           checked
-        />SHOW GRAPH?
+        /><label for="graphbox">SHOW GRAPH?</label>
       </span>
       <span id="gravity">
         <input
           type="checkbox"
           onchange="doublePendulum.setGravity(this.checked ? 0.1 : 0)"
+          id="gravitybox"
           checked
-        />GRAVITY?
+        /><label for="gravitybox">GRAVITY?</label>
       </span>
-      <span id="mass">
-        <span onclick="doublePendulum.decreaseLowerMass()">-</span>
-        <span>MASS</span>
-        <span onclick="doublePendulum.increaseLowerMass()">+</span>
-      </span>
+      <div class="masses">
+        <span class="mass">
+          <span onclick="doublePendulum.decreaseUpperMass()">-</span>
+          <span>UPPER MASS</span>
+          <span onclick="doublePendulum.increaseUpperMass()">+</span>
+        </span>
+        <span class="mass">
+          <span onclick="doublePendulum.decreaseLowerMass()">-</span>
+          <span>LOWER MASS</span>
+          <span onclick="doublePendulum.increaseLowerMass()">+</span>
+        </span>
+      </div>
       <span id="share" onclick="shareConfig()">SHARE</span>
       <span id="toggle" onclick="toggleMenu()"> ☰ </span>
     </div>
   </body>
   <script>
-    var menu = document.querySelector(".menu");
-    var shareButton = document.querySelector("#share");
-    var animationToggleButton = document.querySelector("#pause");
-    var canvas = document.querySelector("#container");
-    var upperGraphLine = document.querySelector("#upper_graph");
-    var base = document.querySelector("#base");
-    var upperString = document.querySelector("#upper_string");
-    var lowerString = document.querySelector("#lower_string");
-    var upperBob = document.querySelector("#upper_bob");
-    var lowerBob = document.querySelector("#lower_bob");
-    var tracerLine = document.querySelector("#tracer");
-    var animation;
+    const menu = document.querySelector(".menu");
+    const shareButton = document.querySelector("#share");
+    const gravityButton = document.querySelector("#gravitybox");
+    const animationToggleButton = document.querySelector("#pause");
+    const canvas = document.querySelector("#container");
+    const upperGraphLine = document.querySelector("#upper_graph");
+    const base = document.querySelector("#base");
+    const upperString = document.querySelector("#upper_string");
+    const lowerString = document.querySelector("#lower_string");
+    const upperBob = document.querySelector("#upper_bob");
+    const lowerBob = document.querySelector("#lower_bob");
+    const tracerLine = document.querySelector("#tracer");
+    const animation;
 
     class DoublePendulum {
       constructor({
@@ -260,6 +298,7 @@
         this.upperBobHold = false;
         this.lowerBobHold = false;
         this.baseHold = false;
+        this.massScaleFactor = 1.2;
         this.setMoments();
       }
 
@@ -296,19 +335,19 @@
       }
 
       increaseUpperMass() {
-        this.m0 += 1;
+        this.m0 *= this.massScaleFactor;
       }
 
       decreaseUpperMass() {
-        this.m0 -= 1;
+        this.m0 /= this.massScaleFactor;
       }
 
       increaseLowerMass() {
-        this.m1 += 1;
+        this.m1 *= this.massScaleFactor;
       }
 
       decreaseLowerMass() {
-        this.m1 -= 1;
+        this.m1 /= this.massScaleFactor;
       }
 
       setGravity(gravity) {
@@ -328,15 +367,7 @@
         this.x0 = x;
         this.y0 = y;
         this.l0 = Math.sqrt(distX ** 2 + distY ** 2);
-        const tempAng = Math.atan(distX / distY);
-        if (distX < 0) {
-          if (distY > 0) this.ang0 = tempAng;
-          if (distY < 0) this.ang0 = tempAng - Math.PI;
-        }
-        if (distX > 0) {
-          if (distY > 0) this.ang0 = tempAng;
-          if (distY < 0) this.ang0 = Math.PI + tempAng;
-        }
+        this.ang0 = Math.atan2(distX, distY);
       }
 
       setUpperBobPos(x, y) {
@@ -498,6 +529,7 @@
 
       clearPoints() {
         this.points = [];
+        this.ctr = 0;
       }
 
       getLine(p1, p2) {
@@ -536,20 +568,20 @@
       getPointsAsString() {
         if (this.smoothen) {
           return this.points
-          .map(
-            ({ x, y }, i) =>
-              `${i == 0 ? `M${x} ${y}` : this.getSmoothPoint({ x, y }, i, this.points)}`
-          )
-          .join(" ");
-        }
-        else {
+            .map(
+              ({ x, y }, i) =>
+                `${
+                  i == 0
+                    ? `M${x} ${y}`
+                    : this.getSmoothPoint({ x, y }, i, this.points)
+                }`
+            )
+            .join(" ");
+        } else {
           const len = this.points.length;
           return this.points
-          .map(
-            ({ x, y }, i) =>
-              `${i == 0 ? "M" : "L"}${x} ${y}`
-          )
-          .join(" ");
+            .map(({ x, y }, i) => `${i == 0 ? "M" : "L"}${x} ${y}`)
+            .join(" ");
         }
       }
 
@@ -615,6 +647,7 @@
         "viewBox",
         `0 0 ${doublePendulum.width} ${doublePendulum.height}`
       );
+      gravityButton.checked = doublePendulum.g != 0;
       tracer.clearPoints();
       upperGraph.clearPoints();
     }
@@ -652,8 +685,8 @@
       lowerBob.setAttribute("cx", lowerBobPos.x);
       lowerBob.setAttribute("cy", lowerBobPos.y);
 
-      var tempAng = ang0 + ang1;
-      var tempPlot = Math.min(tempAng, 2 * Math.PI - tempAng);
+      const tempAng = ang0 + ang1;
+      const tempPlot = Math.min(tempAng, 2 * Math.PI - tempAng);
 
       upperGraph.addGraphPoint(
         doublePendulum.height * 0.5 +
