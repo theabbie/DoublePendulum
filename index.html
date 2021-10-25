@@ -273,6 +273,9 @@
         m0,
         m1,
         g,
+        massScaleFactor,
+        dt,
+        fps,
       }) {
         this.width = width;
         this.height = height;
@@ -295,7 +298,9 @@
         this.upperBobHold = false;
         this.lowerBobHold = false;
         this.baseHold = false;
-        this.massScaleFactor = 1.2;
+        this.massScaleFactor = massScaleFactor;
+        this.dt = dt;
+        this.fps = fps;
         this.setMoments();
       }
 
@@ -479,9 +484,8 @@
       }
 
       move() {
-        const { ang0, ang1, moment0, moment1 } = this;
+        const { ang0, ang1, moment0, moment1, dt } = this;
         const curr = [ang0, ang1, moment0, moment1];
-        const dt = 1;
         const k1 = this.hamiltonian(...curr);
         const k2 = this.hamiltonian(
           ...curr.map((_c, _i) => _c + 0.5 * dt * k1[_i])
@@ -559,7 +563,11 @@
           points[i - 1],
           points[i + 1]
         );
-        return `C${prevSmooth.x} ${prevSmooth.y} ${nextSmooth.x} ${nextSmooth.y} ${point.x} ${point.y}`;
+        return `C${prevSmooth.x.toFixed(2)} ${prevSmooth.y.toFixed(
+          2
+        )} ${nextSmooth.x.toFixed(2)} ${nextSmooth.y.toFixed(
+          2
+        )} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
       }
 
       getPointsAsString() {
@@ -577,7 +585,10 @@
         } else {
           const len = this.points.length;
           return this.points
-            .map(({ x, y }, i) => `${i == 0 ? "M" : "L"}${x} ${y}`)
+            .map(
+              ({ x, y }, i) =>
+                `${i == 0 ? "M" : "L"}${x.toFixed(2)} ${y.toFixed(2)}`
+            )
             .join(" ");
         }
       }
@@ -621,6 +632,9 @@
         m0: 100,
         m1: 100,
         g: 0.1,
+        massScaleFactor: 1.2,
+        dt: 1,
+        fps: 100,
       });
 
       if (window.location.hash.length > 0) {
@@ -711,11 +725,11 @@
       drawTracer();
     }
 
-    animation = setInterval(animate, 10);
+    animation = setInterval(animate, 1000 / doublePendulum.fps);
 
     function animationToggle(e) {
       if (!animation) {
-        animation = setInterval(animate, 10);
+        animation = setInterval(animate, 1000 / doublePendulum.fps);
         animationToggleButton.innerHTML = "| |";
       } else {
         clearInterval(animation);
@@ -782,7 +796,8 @@
     }
 
     function handleDrop() {
-      if (!animation) animation = setInterval(animate, 10);
+      if (!animation)
+        animation = setInterval(animate, 1000 / doublePendulum.fps);
       doublePendulum.dropUpperBob();
       doublePendulum.dropLowerBob();
       doublePendulum.dropBase();
