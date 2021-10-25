@@ -122,7 +122,7 @@
       .masses {
         display: flex;
         align-items: center;
-        width: 70vw;
+        width: 65vw;
         justify-content: space-between;
       }
       .masses .mass {
@@ -130,9 +130,6 @@
       }
       .masses .mass span {
         font-size: 12pt;
-        white-space: nowrap;
-      }
-      #share {
         white-space: nowrap;
       }
       @media only screen and (min-width: 768px) {
@@ -254,7 +251,7 @@
     const upperBob = document.querySelector("#upper_bob");
     const lowerBob = document.querySelector("#lower_bob");
     const tracerLine = document.querySelector("#tracer");
-    const animation;
+    let animation;
 
     class DoublePendulum {
       constructor({
@@ -543,7 +540,7 @@
       getControlPoint(current, previous, next, reverse) {
         previous = previous || current;
         next = next || current;
-        var { len, ang } = this.getLine(previous, next);
+        let { len, ang } = this.getLine(previous, next);
         ang = ang + (reverse ? Math.PI : 0);
         len = len * this.smooth;
         const x = current.x + len * Math.cos(ang);
@@ -594,7 +591,7 @@
       }
     }
 
-    var doublePendulum;
+    let doublePendulum;
 
     const tracer = new Tracer();
 
@@ -631,7 +628,7 @@
         try {
           const encoded_JSON = atob(query);
           const config = JSON.parse(encoded_JSON);
-          for (var prop in config) {
+          for (let prop in config) {
             doublePendulum[prop] = config[prop];
           }
           doublePendulum.width = scaleWidth;
