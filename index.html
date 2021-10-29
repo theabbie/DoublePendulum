@@ -119,8 +119,10 @@
         margin-right: 10px;
         white-space: nowrap;
       }
-      .masses {
+      .masses,
+      .toggles {
         display: flex;
+        flex-direction: column;
         align-items: center;
         width: 65vw;
         justify-content: space-between;
@@ -157,9 +159,12 @@
         #pause {
           transform: scale(5, 5);
         }
-        .masses {
+        .masses,
+        .toggles {
           width: auto;
-          flex-direction: column;
+        }
+        .toggles {
+          align-items: flex-start;
         }
         .masses .mass span {
           font-size: 14pt;
@@ -184,44 +189,58 @@
       >
       <button id="pause">| |</button>
       <span id="reset" onclick="refresh()">RESET</span>
-      <span id="reset">
-        <input
-          type="checkbox"
-          onchange="tracer.setActive(this.checked)"
-          id="resetbox"
-          checked
-        /><label for="resetbox">SHOW TRACE?</label>
-      </span>
-      <span id="persist">
-        <input
-          type="checkbox"
-          onchange="tracer.setMAX(this.checked ? 10000 : 500)"
-          id="persistbox"
-        /><label for="persistbox"> PERSIST TRACE? </label>
-      </span>
-      <span id="smoothen">
-        <input
-          type="checkbox"
-          onchange="tracer.smoothen=this.checked"
-          id="smoothenbox"
-        /><label for="smoothenbox">SMOOTHEN TRACE?</label>
-      </span>
-      <span id="graph">
-        <input
-          type="checkbox"
-          onchange="upperGraph.setActive(this.checked)"
-          id="graphbox"
-          checked
-        /><label for="graphbox">SHOW GRAPH?</label>
-      </span>
-      <span id="gravity">
-        <input
-          type="checkbox"
-          onchange="doublePendulum.setGravity(this.checked ? 0.1 : 0)"
-          id="gravitybox"
-          checked
-        /><label for="gravitybox">GRAVITY?</label>
-      </span>
+      <div class="toggles">
+        <span id="trace">
+          <input
+            type="checkbox"
+            onchange="tracer.setActive(this.checked)"
+            id="resetbox"
+            checked
+          /><label for="resetbox">SHOW TRACE?</label>
+        </span>
+        <span id="graph">
+          <input
+            type="checkbox"
+            onchange="upperGraph.setActive(this.checked)"
+            id="graphbox"
+            checked
+          /><label for="graphbox">SHOW GRAPH?</label>
+        </span>
+      </div>
+      <div class="toggles">
+        <span id="persist">
+          <input
+            type="checkbox"
+            onchange="tracer.setMAX(this.checked ? 10000 : 500)"
+            id="persistbox"
+          /><label for="persistbox">PERSIST TRACE?</label>
+        </span>
+        <span id="smoothen">
+          <input
+            type="checkbox"
+            onchange="tracer.smoothen=this.checked"
+            id="smoothenbox"
+          /><label for="smoothenbox">SMOOTHEN TRACE?</label>
+        </span>
+      </div>
+      <div class="toggles">
+        <span id="gravity">
+          <input
+            type="checkbox"
+            onchange="doublePendulum.setGravity(this.checked ? 0.1 : 0)"
+            id="gravitybox"
+            checked
+          /><label for="gravitybox">GRAVITY?</label>
+        </span>
+        <span id="gravity">
+          <input
+            type="checkbox"
+            onchange="togglePendulum(this.checked)"
+            id="gravitybox"
+            checked
+          /><label for="gravitybox">SHOW PENDULUM?</label>
+        </span>
+      </div>
       <div class="masses">
         <span class="mass">
           <span onclick="doublePendulum.decreaseUpperMass()">-</span>
@@ -234,6 +253,11 @@
           <span onclick="doublePendulum.increaseLowerMass()">+</span>
         </span>
       </div>
+      <span class="speed">
+        <span onclick="doublePendulum.decreaseSpeed()">-</span>
+        <span>SPEED</span>
+        <span onclick="doublePendulum.increaseSpeed()">+</span>
+      </span>
       <span id="share" onclick="shareConfig()">SHARE</span>
       <span id="toggle" onclick="toggleMenu()"> ☰ </span>
     </div>
@@ -274,6 +298,7 @@
         m1,
         g,
         massScaleFactor,
+        speedScaleFactor,
         dt,
         fps,
       }) {
@@ -299,6 +324,7 @@
         this.lowerBobHold = false;
         this.baseHold = false;
         this.massScaleFactor = massScaleFactor;
+        this.speedScaleFactor = speedScaleFactor;
         this.dt = dt;
         this.fps = fps;
         this.setMoments();
@@ -334,6 +360,14 @@
 
       setLowerAcceleration(acc) {
         this.acc1 = acc;
+      }
+
+      increaseSpeed() {
+        this.dt *= this.speedScaleFactor;
+      }
+
+      decreaseSpeed() {
+        this.dt /= this.speedScaleFactor;
       }
 
       increaseUpperMass() {
@@ -633,6 +667,7 @@
         m1: 100,
         g: 0.1,
         massScaleFactor: 1.2,
+        speedScaleFactor: 1.2,
         dt: 1,
         fps: 100,
       });
@@ -739,11 +774,19 @@
     }
 
     function toggleMenu() {
-      if (menu.style.transform == "translate(-50%, -95%)") {
+      if (menu.style.transform == "translate(-50%, -97%)") {
         menu.style.transform = "translate(-50%, 0%)";
       } else {
-        menu.style.transform = "translate(-50%, -95%)";
+        menu.style.transform = "translate(-50%, -97%)";
       }
+    }
+
+    function togglePendulum(show) {
+      base.style.display = show ? "block" : "none";
+      upperString.style.display = show ? "block" : "none";
+      upperBob.style.display = show ? "block" : "none";
+      lowerString.style.display = show ? "block" : "none";
+      lowerBob.style.display = show ? "block" : "none";
     }
 
     function shareConfig() {
