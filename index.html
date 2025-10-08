@@ -416,7 +416,7 @@
         const upperBobPos = this.getUpperBob();
         const [distX, distY] = [x - upperBobPos.x, y - upperBobPos.y];
         this.l1 = Math.sqrt(distX ** 2 + distY ** 2);
-        this.ang1 = -Math.atan2(distX, distY);
+        this.ang1 = Math.atan2(distX, distY);
       }
 
       holdBase() {
@@ -463,7 +463,7 @@
         const { x, y } = this.calculateBobPosition(
           upperBobPos.x,
           upperBobPos.y,
-          -ang1,
+          ang1,
           l1
         );
         return { x, y };
